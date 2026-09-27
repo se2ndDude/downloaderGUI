@@ -29,8 +29,8 @@ fullscreen = 0
 
 # (str) Android settings
 android.api = 35
-android.minapi = 23
-android.ndk_api = 23
+android.minapi = 24
+android.ndk_api = 24
 android.enable_androidx = True
 android.accept_sdk_license = True
 android.archs = arm64-v8a,armeabi-v7a,x86_64
