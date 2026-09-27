@@ -1,0 +1,86 @@
+name: Auto-heal Android build
+
+on:
+  workflow_run:
+    workflows: ["Build DownloaderGUI APK"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+  issues: write
+
+jobs:
+  repair:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 30
+
+      - name: Download failed build log
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed > failed.log
+
+      - name: Count consecutive automatic repairs
+        id: attempts
+        run: |
+          count=$(git log --pretty=%s -30 | awk '
+            /^ci: auto-fix Android build / { c++; next }
+            { print c; exit }
+            END { if (NR == 0) print c }
+          ')
+          if [ -z "$count" ]; then count=0; fi
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Consecutive automatic repairs: $count"
+
+      - name: Analyze failed build
+        if: ${{ steps.attempts.outputs.count < 3 }}
+        run: python .github/scripts/auto_fix_android.py
+
+      - name: Detect repair
+        id: result
+        if: ${{ steps.attempts.outputs.count < 3 }}
+        run: |
+          if [ -f autofix_result.txt ] && grep -q '^AUTO_FIX_APPLIED$' autofix_result.txt; then
+            echo "fixed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fixed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit repair
+        if: ${{ steps.result.outputs.fixed == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add buildozer.spec .github/workflows/android.yml
+          if git diff --cached --quiet; then
+            echo "No repository changes to commit."
+            exit 0
+          fi
+          attempt=$(( ${{ steps.attempts.outputs.count }} + 1 ))
+          git commit -m "ci: auto-fix Android build (attempt $attempt)"
+          git push origin HEAD:main
+
+      - name: Open analysis issue for unknown failure
+        if: ${{ steps.attempts.outputs.count >= 3 || steps.result.outputs.fixed != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          title="Android build needs analysis"
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title $title" --json number --jq 'length')
+          if [ "$existing" != "0" ]; then
+            exit 0
+          fi
+          if [ ! -f autofix_issue.md ]; then
+            printf "# Android build needs analysis\n\nAutomatic repair could not identify the failure.\n\nBuild run: %s\n" "$RUN_URL" > autofix_issue.md
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file autofix_issue.md
