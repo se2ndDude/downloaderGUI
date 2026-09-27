@@ -34,7 +34,7 @@ jobs:
             buildozer-${{ runner.os }}-
 
       - name: Pull official Buildozer image
-        run: docker pull ghcr.io/kivy/buildozer:1.6.0
+        run: docker pull ghcr.io/kivy/buildozer:latest
 
       - name: Build debug APK
         run: |
