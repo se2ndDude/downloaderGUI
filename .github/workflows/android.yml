@@ -59,14 +59,6 @@ jobs:
           rm -rf python-for-android
           mkdir -p bin
 
-      - name: Clone patched python-for-android
-        run: |
-          git clone --depth 1 --branch develop https://github.com/kivy/python-for-android.git python-for-android
-          git -C python-for-android fetch --depth 1 origin d2ee8c5
-          git -C python-for-android checkout d2ee8c5
-          test -d python-for-android/pythonforandroid
-          python -m compileall -q python-for-android/pythonforandroid
-
       - name: Build debug APK
         env:
           BUILDOZER_WARN_ON_ROOT: "1"
