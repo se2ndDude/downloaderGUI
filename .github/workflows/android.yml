@@ -52,8 +52,11 @@ jobs:
           rustc --version
           buildozer --version
 
-      - name: Clean stale Android build state
-        run: buildozer android clean
+      - name: Start from a clean Buildozer state
+        run: |
+          rm -rf .buildozer
+          rm -rf bin
+          mkdir -p bin
 
       - name: Build debug APK
         env:
