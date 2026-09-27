@@ -56,7 +56,14 @@ jobs:
         run: |
           rm -rf .buildozer
           rm -rf bin
+          rm -rf python-for-android
           mkdir -p bin
+
+      - name: Clone pinned python-for-android release
+        run: |
+          git clone --depth 1 --branch v2026.05.09 https://github.com/kivy/python-for-android.git python-for-android
+          test -d python-for-android/pythonforandroid
+          python -m compileall -q python-for-android/pythonforandroid
 
       - name: Build debug APK
         env:
