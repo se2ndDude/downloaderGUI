@@ -40,6 +40,8 @@ android.private_storage = True
 
 # (str) Build behavior
 p4a.bootstrap = sdl2
+p4a.branch = develop
+p4a.commit = e772ad93f20a61c0bbe1cf8955e073cfb41062e1
 
 [buildozer]
 log_level = 2
